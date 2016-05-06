@@ -30,31 +30,21 @@
         {
             this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ToastForm));
-            this.pollTimer = new System.Windows.Forms.Timer(this.components);
             this.animationTimer = new System.Windows.Forms.Timer(this.components);
             this.displayTimer = new System.Windows.Forms.Timer(this.components);
             this.displayLabel = new System.Windows.Forms.Label();
             this.valueLabel = new System.Windows.Forms.Label();
             this.timestampLabel = new System.Windows.Forms.Label();
             this.panel = new System.Windows.Forms.Panel();
-            this.notifyIcon = new System.Windows.Forms.NotifyIcon(this.components);
             this.panel.SuspendLayout();
             this.SuspendLayout();
             // 
-            // pollTimer
-            // 
-            this.pollTimer.Interval = 1000;
-            this.pollTimer.Tick += new System.EventHandler(this.pollTimer_Tick);
-            // 
             // animationTimer
             // 
-            this.animationTimer.Interval = 10;
-            this.animationTimer.Tag = "true";
             this.animationTimer.Tick += new System.EventHandler(this.animationTimer_Tick);
             // 
             // displayTimer
             // 
-            this.displayTimer.Interval = 3000;
             this.displayTimer.Tick += new System.EventHandler(this.displayTimer_Tick);
             // 
             // displayLabel
@@ -98,13 +88,7 @@
             this.panel.Location = new System.Drawing.Point(0, 0);
             this.panel.Name = "panel";
             this.panel.Size = new System.Drawing.Size(203, 60);
-            this.panel.TabIndex = 3;
-            // 
-            // notifyIcon
-            // 
-            this.notifyIcon.Icon = ((System.Drawing.Icon)(resources.GetObject("notifyIcon.Icon")));
-            this.notifyIcon.Text = "notifyIcon";
-            this.notifyIcon.Visible = true;
+            this.panel.TabIndex = 0;
             // 
             // ToastForm
             // 
@@ -118,6 +102,7 @@
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MaximumSize = new System.Drawing.Size(300, 60);
             this.Name = "ToastForm";
+            this.ShowInTaskbar = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.TopMost = true;
             this.Load += new System.EventHandler(this.ToastForm_Load);
@@ -129,14 +114,12 @@
 
         #endregion
 
-        private System.Windows.Forms.Timer pollTimer;
         private System.Windows.Forms.Timer animationTimer;
         private System.Windows.Forms.Timer displayTimer;
         private System.Windows.Forms.Label displayLabel;
         private System.Windows.Forms.Label valueLabel;
         private System.Windows.Forms.Label timestampLabel;
         private System.Windows.Forms.Panel panel;
-        private System.Windows.Forms.NotifyIcon notifyIcon;
     }
 }
 

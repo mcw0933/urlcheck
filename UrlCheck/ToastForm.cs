@@ -1,84 +1,46 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
 using System.Drawing;
-using System.Net.Http;
-using System.Web.Helpers;
 using System.Windows.Forms;
 
 namespace UrlCheck {
     public partial class ToastForm : Form {
         #region Members and init
-        private static readonly int AnimationIntervalMSec = Get("AnimationIntervalMSec", 10);
-        private static readonly int DisplayMSec = Get("DisplayMSec", 3000);
-        private static readonly int PollIntervalMSec = Get("DisplayMSec", 1000);
+        private UrlCheck agent;
 
-        private static readonly string PollUrl = Get("PollUrl", "https://pacific-hollows-2522.herokuapp.com/api/player/WhileJazz?gid=Reddit%20Omega");
-        private static readonly string CheckJsonPath = Get("CheckJsonPath", "player.trophies_won");
-        private static readonly string DisplayJsonPath = Get("DisplayJsonPath", "player.trophies_won");
-
-        private static string[] dot = new string[] { "." };
-        private static readonly List<string> CheckJsonPathParts = new List<string>(CheckJsonPath.Split(dot, StringSplitOptions.RemoveEmptyEntries));
-        private static readonly List<string> DisplayJsonPathParts = new List<string>(DisplayJsonPath.Split(dot, StringSplitOptions.RemoveEmptyEntries));
-
-        private string LastValue = Get("LastValue", string.Empty);
-
-        public ToastForm() {
+        public ToastForm(UrlCheck agent) {
             InitializeComponent();
+
+            this.animationTimer.Interval = ConfigSettings.AnimationIntervalMSec;
+            this.displayTimer.Interval = ConfigSettings.DisplayMSec;
+
+            this.agent = agent;
         }
         #endregion
 
         private void ToastForm_Load(object sender, EventArgs e) {
             var area = Screen.GetWorkingArea(this);
-
             this.Location = new Point(area.Width - this.Width, area.Height + this.Height);
-
-            StartPolling();
         }
 
-        #region Methods
-        public void StartPolling() {
-            pollTimer.Enabled = true;
-            pollTimer.Start();
-        }
+        #region Properties
 
-        public async void CheckUrl() {
-            try {
-                using (var web = new HttpClient()) {
-                    var jsonStr = await web.GetStringAsync(PollUrl);
+        public string Label { get { return displayLabel.Text; } }
+        public string Value { get { return valueLabel.Text; } } 
+        public bool Frozen { get; private set; }
 
-                    if (!string.IsNullOrWhiteSpace(jsonStr)) {
-                        dynamic json = Json.Decode(jsonStr);
-
-                        if (json != null) {
-                            dynamic objPtr = json;
-
-                            foreach (var member in CheckJsonPathParts) {
-                                if (objPtr[member] != null)
-                                    objPtr = objPtr[member];
-                            }
-
-                            if (objPtr != null) {
-                                var newValue = objPtr.ToString().Trim();
-
-                                if (string.IsNullOrWhiteSpace(LastValue) || string.Compare(newValue, LastValue, true) != 0) {
-                                    LastValue = newValue;
-                                    Display();
-                                }
-                            }
-                        }
-                    }
-                }
-            } catch (Exception ex) {
-                Display("Error:", ex.Message);
+        // Hide from Windows task switcher
+        // http://stackoverflow.com/a/17893626/3782
+        protected override CreateParams CreateParams {
+            get {
+                var Params = base.CreateParams;
+                Params.ExStyle |= 0x80;
+                return Params;
             }
         }
 
-        public void StopPolling() {
-            pollTimer.Stop();
-            pollTimer.Enabled = false;
-        }
+        #endregion
 
+        #region Methods
         public void PopToast() {
             animationTimer.Tag = Direction.Up;
             animationTimer.Enabled = true;
@@ -86,32 +48,24 @@ namespace UrlCheck {
         }
 
         public void Display(string label = null, string value = null) {
-            displayLabel.Text = label ?? DisplayJsonPath;
-            valueLabel.Text = value ?? LastValue;
+            displayLabel.Text = label ?? agent.LastLabel ?? ConfigSettings.LabelJsonPath;
+            valueLabel.Text = value ?? agent.LastValue;
             timestampLabel.Text = DateTime.Now.ToString();
 
             PopToast();
         }
+
+        public void Freeze() {
+            Frozen = true;
+        }
+
+        public void Unfreeze() {
+            Frozen = false;
+            StartDelayHide();
+        }
         #endregion
 
         #region Subroutines
-        private static int Get(string name, int defVal) {
-            var retVal = defVal;
-            var setting = ConfigurationManager.AppSettings.Get(name);
-
-            if (!string.IsNullOrWhiteSpace(setting))
-                retVal = int.TryParse(setting, out retVal) ? retVal : defVal;
-
-            return retVal;
-        }
-
-        private static string Get(string name, string defVal) {
-            var setting = ConfigurationManager.AppSettings.Get(name);
-            var retVal = string.IsNullOrWhiteSpace(setting) ? defVal : setting;
-
-            return retVal;
-        }
-
         private void Animate() {
             var yBound = Screen.GetWorkingArea(this).Height;
 
@@ -119,10 +73,10 @@ namespace UrlCheck {
                 if (this.Location.Y > yBound - this.Height) {
                     this.Location = new Point(this.Location.X, this.Location.Y - 8);
                 } else {
-                    animationTimer.Stop();
-                    animationTimer.Enabled = false;
-                    displayTimer.Start();
-                    displayTimer.Enabled = true;
+                    StopAnimation();
+
+                    if (!Frozen)
+                        StartDelayHide();
                 }
             } else {
                 displayTimer.Stop();
@@ -130,20 +84,23 @@ namespace UrlCheck {
 
                 if (this.Location.Y < yBound + this.Height) {
                     this.Location = new Point(this.Location.X, this.Location.Y + 8);
-                } else {
-                    animationTimer.Stop();
-                    animationTimer.Enabled = false;
-                }
+                } else
+                    StopAnimation();
             }
+        }
+
+        private void StartDelayHide() {
+            displayTimer.Start();
+            displayTimer.Enabled = true;
+        }
+
+        private void StopAnimation() {
+            animationTimer.Stop();
+            animationTimer.Enabled = false;
         }
         #endregion
 
         #region Event handlers
-        private void pollTimer_Tick(object sender, EventArgs e) {
-            CheckUrl();
-        }
-        #endregion
-
         private void animationTimer_Tick(object sender, EventArgs e) {
             Animate();
         }
@@ -153,6 +110,7 @@ namespace UrlCheck {
             animationTimer.Enabled = true;
             animationTimer.Start();
         }
+        #endregion
     }
 
     public enum Direction {
